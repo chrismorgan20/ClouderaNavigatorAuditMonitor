@@ -31,52 +31,59 @@ def getLinuxTimeUTCNowMillis():
 def getLinuxTimeUTCMillis(desiredDateTime):
     return (int(((desiredDateTime - datetime(1970,1,1,0,0,0))).total_seconds())*1000)
 
-def getAllHistoricalEvents(navfqdn,timenow,user,pw,interval):
+def getAllHistoricalEvents(host,navfqdn,timenow,user,pw,interval):
     subtractIncrement = 604800000
     clouderaStart = getLinuxTimeUTCMillis(datetime(2008,1,1,0,0,0))
     ctime = timenow
     historicalEvents = []
     while ctime > clouderaStart: #Cloudera was founded in 2008, so get all events going back to 01/01/2008
         print("Get Historical events: " + str(ctime))
-        reqevents = getEvents(navfqdn,"",(ctime-subtractIncrement),ctime,user,pw,interval)
+        reqevents = getEvents(host,navfqdn,"",(ctime-subtractIncrement),ctime,user,pw,interval)
         if reqevents:
             historicalEvents = historicalEvents + reqevents
         ctime = ctime - subtractIncrement
         print(ctime)
     return historicalEvents
 
-def getEvents(navfqdn,query,startTime,endTime,user,pw,interval):
-    allevents = []
-    offset = 0
-    moreEvents = True
+def getEvents(host,navfqdn,query,startTime,endTime,user,pw,interval):
+    allevents = {}
+    allevents[host] = []
     interval = interval * 1000
     queryEnd = startTime + interval
-    limit = 20000
+    queryStart = startTime
     if queryEnd > endTime:
         queryEnd = endTime
     contQuery = True
     while(contQuery):
-        events = []
+        events = {}
+        events[host] = []
+        moreEvents = True
+        offset = 0
         while(moreEvents):
             print("getting events. Offset: " + str(offset))
-            r = requests.get(str(navfqdn) + '/api/v3/audits?query=' + str(query) + '&startTime=' + str(startTime) + '&endTime=' + str(queryEnd) + '&offset=' + str(int(10000 * offset)) + '&limit=' + str(limit),auth=(user,pw))
+            if navfqdn[:5] != 'https':
+                r = requests.get(str(navfqdn) + '/api/v3/audits?query=' + str(query) + '&startTime=' + str(queryStart) + '&endTime=' + str(queryEnd) + '&offset=' + str(int(10000 * offset)) + '&limit=10000',auth=(user,pw))
+            else:
+                #TODO: Get verify cert function to work correctly with custom CAs
+                r = requests.get(str(navfqdn) + '/api/v3/audits?query=' + str(query) + '&startTime=' + str(queryStart) + '&endTime=' + str(queryEnd) + '&offset=' + str(int(10000 * offset)) + '&limit=10000',auth=(user,pw),verify=False)
             if (r.text != '[ ]'):
-                events = events + (json.loads(r.text))
+                events[host] = events[host] + (json.loads(r.text))
                 offset = offset + 1
                 print(r.text)
             else:
                 moreEvents = False
-                allevents = allevents + events
-            if events:
+                allevents[host] = allevents[host] + events[host]
+            if events[host]:
                 with open("./allevents/allevents_" + str(queryEnd) + ".json",'w') as fc:
-                    json.dump(events,fc,indent=4)
+                    json.dump(events[host],fc,indent=4)
         if queryEnd >= endTime:
             contQuery = False
         else:
+            queryStart = queryEnd
             queryEnd = queryEnd + interval
             if queryEnd > endTime:
                 queryEnd = endTime
-    return allevents
+    return allevents[host]
 
 def mergeEvents(allEvents,currentEvents):
     for host in currentEvents.keys():
@@ -101,7 +108,7 @@ def getAllEvents(config,getOnlyExisting):
                 try:
                     allevents = mergeEvents(allevents,json.loads(fr.read()))
                 except:
-                    print("ERROR: No Events could be loaded from file" + x)
+                    print("ERROR: No Events could be loaded from file" + str(x))
     
     #if not set to get only stored events
     if not getOnlyExisting:
@@ -115,13 +122,13 @@ def getAllEvents(config,getOnlyExisting):
                 connectionstring = 'http://' + connectionstring
             #if first time running extract and getHistory option set, then call getAllHistoricalEvents
             if config[host]['getHistory'] and not config[host]['lastExtract'] and host not in allevents.keys():
-                allevents[host] = getAllHistoricalEvents(connectionstring,curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
+                allevents[host] = getAllHistoricalEvents(host,connectionstring,curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
             elif host in allevents.keys() and not config[host]['lastExtract']:
-                allevents[host] = allevents[host] + getEvents(connectionstring,"",curTime - subtractIncrement,curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
+                allevents[host] = allevents[host] + getEvents(host,connectionstring,"",curTime - subtractIncrement,curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
             elif host in allevents.keys():
-                allevents[host] = allevents[host] + getEvents(connectionstring,"",config[host]['lastExtract'],curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
+                allevents[host] = allevents[host] + getEvents(host,connectionstring,"",config[host]['lastExtract'],curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
             else:
-                allevents[host] = getEvents(connectionstring,"",curTime - subtractIncrement,curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
+                allevents[host] = getEvents(host,connectionstring,"",curTime - subtractIncrement,curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
             config[host]['lastExtract'] = curTime
         with open("config.json",'w') as fcon:
             json.dump(config,fcon,indent=4)
