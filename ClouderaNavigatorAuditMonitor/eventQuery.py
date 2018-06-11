@@ -75,7 +75,7 @@ def getEvents(host,navfqdn,query,startTime,endTime,user,pw,interval):
                 allevents[host] = allevents[host] + events[host]
             if events[host]:
                 with open("./allevents/allevents_" + str(queryEnd) + ".json",'w') as fc:
-                    json.dump(events[host],fc,indent=4)
+                    json.dump(events,fc,indent=4)
         if queryEnd >= endTime:
             contQuery = False
         else:
@@ -93,7 +93,7 @@ def mergeEvents(allEvents,currentEvents):
             allEvents[host] = allEvents[host] + currentEvents[host]
     return allEvents
 
-def getAllEvents(config,getOnlyExisting):
+def getAllEvents(config):
     subtractIncrement = 86400000 #static variable for value of 24 hours in milliseconds as increment to retrieve events by
     #initialize dictionary to hold all events
     allevents = {}
@@ -102,19 +102,19 @@ def getAllEvents(config,getOnlyExisting):
 
     #load previous event extracts
     p = Path("./allevents/")
-    for x in p.iterdir():
-        if not x.is_dir():
-            with open(str(x),'r') as fr:
-                try:
-                    allevents = mergeEvents(allevents,json.loads(fr.read()))
-                except:
-                    print("ERROR: No Events could be loaded from file" + str(x))
-    
-    #if not set to get only stored events
-    if not getOnlyExisting:
-        f = Fernet(bytes(config['enckey']))
-        curTime = getLinuxTimeUTCNowMillis()
-        for host in config['cnfqdn']:
+    if not config['analyzeOnlyLatest']:
+        for x in p.iterdir():
+            if not x.is_dir():
+                with open(str(x),'r') as fr:
+                    try:
+                        allevents = mergeEvents(allevents,json.loads(fr.read()))
+                    except:
+                        print("ERROR: No Events could be loaded from file" + str(x))
+
+    f = Fernet(bytes(config['enckey']))
+    curTime = getLinuxTimeUTCNowMillis()
+    for host in config['cnfqdn']:
+        if not config[host]['analyzeOnlyExisting']:
             connectionstring = host + ":" + config[host]['port']
             if config[host]['tls']:
                 connectionstring = 'https://' + connectionstring
@@ -130,6 +130,6 @@ def getAllEvents(config,getOnlyExisting):
             else:
                 allevents[host] = getEvents(host,connectionstring,"",curTime - subtractIncrement,curTime,config[host]['user'],f.decrypt(bytes(config[host]['passwd'])),config[host]['extInterval'])
             config[host]['lastExtract'] = curTime
-        with open("config.json",'w') as fcon:
-            json.dump(config,fcon,indent=4)
+    with open("config.json",'w') as fcon:
+        json.dump(config,fcon,indent=4)
     return allevents

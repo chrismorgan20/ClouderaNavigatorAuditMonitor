@@ -38,7 +38,7 @@ if not Path("config.json").is_file():
 #Load Master Configuration
 config = appConfig.getMasterConfig()
 
-allEvents = eventQuery.getAllEvents(config,False)
+allEvents = eventQuery.getAllEvents(config)
 eventMonitors.runMonitors(allEvents)
 
 if config['alerts']['sendalerts']:

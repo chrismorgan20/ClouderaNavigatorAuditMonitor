@@ -16,7 +16,8 @@ import json
 
 def runMonitors(events):
     c = getCounters(events)
-
+    hueUsers = hueCreateServiceUser(events)
+    sentry = getSentryActions(events)
     return c
 
 def getCounters(events):
@@ -28,8 +29,6 @@ def getCounters(events):
     authZ = {}
     for host in events:
         for event in events[host]:
-            #print("THIS IS AN EVENT")
-            #print(event)
             if ('username' in event.keys()) and ('command' in event.keys()) and ('allowed' in event.keys()):
                 if event['command'] == 'authentication':
                     key = event['username'] + event['ipAddress'] + str(event['allowed'])
@@ -70,23 +69,25 @@ def getCounters(events):
 
 def hueCreateServiceUser(events):
     createdUsers = []
-    for event in events:
-        if (('username' in event.keys()) and ('service' in event.keys()) and ('command' in event.keys())):
-            if ('hue' in str(event['service']).lower()) and (str(event['command']).lower() == 'create_user'):
-                createdUsers.append(event)
+    for host in events:
+        for event in events[host]:
+            if (('username' in event.keys()) and ('service' in event.keys()) and ('command' in event.keys())):
+                if ('hue' in str(event['service']).lower()) and (str(event['command']).lower() == 'create_user'):
+                    createdUsers.append(event)
+    print("Users Created in HUE")
+    print(createdUsers)
+    return createdUsers
 
-# NEXT EVENT TO BUILD DETECTION FOR
-#    {
-#        "username": "admin", 
-#        "impersonator": "hue", 
-#        "service": "hue", 
-#        "timestamp": "2018-04-29T04:14:03.959Z", 
-#        "command": "CREATE_USER", 
-#        "allowed": true, 
-#        "ipAddress": "192.168.1.95", 
-#       "serviceValues": {
-#            "url": "/useradmin/users/new", 
-#            "operation_text": "Created User with username: hdfs", 
-#            "service": "useradmin"
-#        }
-#    },
+def getSentryActions(events):
+    sentryActions = {}
+    for host in events:
+        for event in events[host]:
+            if ('service' in event.keys()):
+                if ('sentry' in str(event['service']).lower()):
+                    if (event['username'] in sentryActions.keys()):
+                        sentryActions[str(event['username'])].append(event)
+                    else:
+                        sentryActions[str(event['username'])] = []
+                        sentryActions[str(event['username'])].append(event)
+    print("Sentry Actions")
+    print(json.dumps(sentryActions,indent=4))

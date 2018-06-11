@@ -68,9 +68,12 @@ def setMasterConfig():
 			'tls': tls,
             'getHistory': historicalEvents,
             'lastExtract': False,
-            'extInterval': int(moninterval)
+            'extInterval': int(moninterval),
+            'analyzeOnlyExisting': False
             #'apiv': apiversion
         }
+    analyzeLatest = getSetting("Always analyze only latest extract? (Y/N): ",'TRUE/FALSE',"Error: Please enter 'Y' or 'N'")
+    masterconfig['analyzeOnlyLatest'] = analyzeLatest
     sendalerts = getSetting("Would you like to send monitor emails? (Y/N): ", 'TRUE/FALSE', "Error: Please enter 'Y' or 'N'")
     if sendalerts:
         smtpserver = getSetting("Input SMTP Server FQDN (or 'N' for no alerts: ",'[a-zA-Z0-9.]*\Z',"Error: Please ensure SMTP server FQDN is alphanumeric. The only special characters allowed are periods.")
