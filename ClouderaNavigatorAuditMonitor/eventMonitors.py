@@ -15,10 +15,14 @@
 import json
 
 def runMonitors(events):
+    monitorResults = {}
     c = getCounters(events)
     hueUsers = hueCreateServiceUser(events)
     sentry = getSentryActions(events)
-    return c
+    monitorResults['auth'] = c
+    monitorResults['hue'] = hueUsers
+    monitorResults['sentry'] = sentry
+    return monitorResults
 
 def getCounters(events):
     authN = {}
@@ -91,3 +95,4 @@ def getSentryActions(events):
                         sentryActions[str(event['username'])].append(event)
     print("Sentry Actions")
     print(json.dumps(sentryActions,indent=4))
+    return sentryActions

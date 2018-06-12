@@ -114,12 +114,13 @@ def getMasterConfig():
         return masterconfg
 
 def createEmailHandler(alertconfig,enckey):
-    f = Fernet(enckey)
+    f = Fernet(bytes(enckey))
     mailHandler = smtplib.SMTP(alertconfig['smtpserver'],int(alertconfig['smtpport']))
     if alertconfig['smtptls']:
         mailHandler.starttls()
     if alertconfig['smtpuser']:
-        mailHandler.login(alertconfig['smtpuser'],f.decrypt(bytes(alertconfig['smtppass'])))
+        mailpass = f.decrypt(bytes(alertconfig['smtppass']))
+        mailHandler.login(alertconfig['smtpuser'],str(mailpass))
     message = MIMEMultipart()
     message['From'] = alertconfig['emailfrom']
     message['To'] = ','.join(alertconfig['emailto'])

@@ -39,12 +39,12 @@ if not Path("config.json").is_file():
 config = appConfig.getMasterConfig()
 
 allEvents = eventQuery.getAllEvents(config)
-eventMonitors.runMonitors(allEvents)
+monitors = eventMonitors.runMonitors(allEvents)
 
 if config['alerts']['sendalerts']:
     print("Emailing event analysis results...")
     mail,msg = appConfig.createEmailHandler(config['alerts'],config['enckey'])
-    msg.attach(MIMEText(json.dumps(compareResults,indent=4), 'plain'))
+    msg.attach(MIMEText(json.dumps(monitors,indent=4), 'plain'))
     try:
         mail.sendmail(config['alerts']['emailfrom'],config['alerts']['emailto'],msg.as_string())
     except SMTPRecipientsRefused:
