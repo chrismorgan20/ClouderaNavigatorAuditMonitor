@@ -25,12 +25,14 @@ def runMonitors(events):
     return monitorResults
 
 def getCounters(events):
+    authDict = {}
     authN = {}
     cmAuthN = {
         'success':{},
         'failure':{}
     }
     authZ = {}
+    userFailures = {}
     for host in events:
         for event in events[host]:
             if ('username' in event.keys()) and ('command' in event.keys()) and ('allowed' in event.keys()):
@@ -46,6 +48,11 @@ def getCounters(events):
                         authN[key]['ipAddress'] = event['ipAddress']
                         authN[key]['allowed'] = str(event['allowed'])
                 elif ('service' in event.keys()):
+                    if (event['username'] in userFailures.keys()):
+                        userFailures[str(event['username'])].append(event)
+                    else:
+                        userFailures[str(event['username'])] = []
+                        userFailures[str(event['username'])].append(event)
                     key = event['username'] + event['ipAddress'] + event['service'] + str(event['allowed'])
                     if key in authZ:
                         authZ[key]['count'] += 1
@@ -63,28 +70,33 @@ def getCounters(events):
                         cmAuthN['success'][name] = cmAuthN['success'][name] + 1
                     else:
                         cmAuthN['success'][name] = 1
-
-    print("Authentication Counters")
-    print(json.dumps(authN,indent=4))
-    print("Authorization Counters")
-    print(json.dumps(authZ,indent=4))
-    print("Cloudera Manager Authentication")
-    print(json.dumps(cmAuthN,indent=4))
+        authDict[host] = {
+            'Authentication':authN,
+            'AuthorizationByUserandService':authZ,
+            'Authorization Failures':userFailures,
+            'ClouderaManagerAuthN':cmAuthN
+        }
+    print("AuthN/AuthZ Events")
+    print (json.dumps(authDict,indent=4))
+    return authDict
 
 def hueCreateServiceUser(events):
-    createdUsers = []
+    hueCreates = {}
     for host in events:
+        createdUsers = []
         for event in events[host]:
             if (('username' in event.keys()) and ('service' in event.keys()) and ('command' in event.keys())):
                 if ('hue' in str(event['service']).lower()) and (str(event['command']).lower() == 'create_user'):
                     createdUsers.append(event)
+        hueCreates[host] = createdUsers
     print("Users Created in HUE")
-    print(createdUsers)
-    return createdUsers
+    print(json.dumps(hueCreates,indent=4))
+    return hueCreates
 
 def getSentryActions(events):
-    sentryActions = {}
+    sentryByHost = {}
     for host in events:
+        sentryActions = {}
         for event in events[host]:
             if ('service' in event.keys()):
                 if ('sentry' in str(event['service']).lower()):
@@ -93,6 +105,7 @@ def getSentryActions(events):
                     else:
                         sentryActions[str(event['username'])] = []
                         sentryActions[str(event['username'])].append(event)
+        sentryByHost[host] = sentryActions
     print("Sentry Actions")
-    print(json.dumps(sentryActions,indent=4))
-    return sentryActions
+    print(json.dumps(sentryByHost,indent=4))
+    return sentryByHost

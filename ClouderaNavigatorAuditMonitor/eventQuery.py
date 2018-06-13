@@ -62,6 +62,7 @@ def getEvents(host,navfqdn,query,startTime,endTime,user,pw,interval):
         while(moreEvents):
             print("getting events. Offset: " + str(offset))
             if navfqdn[:5] != 'https':
+                #TODO: Add error catching and error sending email
                 r = requests.get(str(navfqdn) + '/api/v3/audits?query=' + str(query) + '&startTime=' + str(queryStart) + '&endTime=' + str(queryEnd) + '&offset=' + str(int(10000 * offset)) + '&limit=10000',auth=(user,pw))
             else:
                 #TODO: Get verify cert function to work correctly with custom CAs

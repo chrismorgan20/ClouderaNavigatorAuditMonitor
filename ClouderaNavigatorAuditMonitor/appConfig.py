@@ -76,7 +76,7 @@ def setMasterConfig():
     masterconfig['analyzeOnlyLatest'] = analyzeLatest
     sendalerts = getSetting("Would you like to send monitor emails? (Y/N): ", 'TRUE/FALSE', "Error: Please enter 'Y' or 'N'")
     if sendalerts:
-        smtpserver = getSetting("Input SMTP Server FQDN (or 'N' for no alerts: ",'[a-zA-Z0-9.]*\Z',"Error: Please ensure SMTP server FQDN is alphanumeric. The only special characters allowed are periods.")
+        smtpserver = getSetting("Input SMTP Server FQDN (or 'N' for no alerts): ",'[a-zA-Z0-9.]*\Z',"Error: Please ensure SMTP server FQDN is alphanumeric. The only special characters allowed are periods.")
         smtpport = getSetting("Enter SMTP Server Port: ",'[\d]*\Z',"Error: Please ensure port consists only of digits")
         commonsmtpports = [25, 465, 587]
         if int(smtpport) not in commonsmtpports:
