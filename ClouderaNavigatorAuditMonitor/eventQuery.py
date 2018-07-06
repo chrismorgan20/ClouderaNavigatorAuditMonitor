@@ -47,6 +47,8 @@ def getAllHistoricalEvents(host,navfqdn,timenow,user,pw,interval):
 
 def getEvents(host,navfqdn,query,startTime,endTime,user,pw,interval):
     allevents = {}
+    errors = {}
+    errors[host] = {}
     allevents[host] = []
     interval = interval * 1000
     queryEnd = startTime + interval
@@ -68,14 +70,19 @@ def getEvents(host,navfqdn,query,startTime,endTime,user,pw,interval):
                 #TODO: Get verify cert function to work correctly with custom CAs
                 r = requests.get(str(navfqdn) + '/api/v3/audits?query=' + str(query) + '&startTime=' + str(queryStart) + '&endTime=' + str(queryEnd) + '&offset=' + str(int(10000 * offset)) + '&limit=10000',auth=(user,pw),verify=False)
             if (r.text != '[ ]'):
-                events[host] = events[host] + (json.loads(r.text))
+                if type(json.loads(r.text)) is list:
+                    events[host] = events[host] + (json.loads(r.text))
+                else:
+                    errors[host][offset] = json.loads(r.text)
+                    with open("./errors_" + str(host) + "_" + str(queryEnd) + "_" + str(offset) + ".json",'w') as fc:
+                        json.dump(errors,fc,indent=4)
                 offset = offset + 1
-                print(r.text)
+                #print(r.text)
             else:
                 moreEvents = False
                 allevents[host] = allevents[host] + events[host]
             if events[host]:
-                with open("./allevents/allevents_" + str(queryEnd) + ".json",'w') as fc:
+                with open("./allevents/allevents_" + str(host) + "_" + str(queryEnd) + ".json",'w') as fc:
                     json.dump(events,fc,indent=4)
         if queryEnd >= endTime:
             contQuery = False
