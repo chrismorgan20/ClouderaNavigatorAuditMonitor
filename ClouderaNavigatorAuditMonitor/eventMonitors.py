@@ -82,7 +82,7 @@ def getCounters(events):
     for host in events:
         for event in events[host]:
             if ('username' in event.keys()) and ('command' in event.keys()) and ('allowed' in event.keys()):
-                if event['command'] == 'authentication':
+                if event['command'] == 'authentication' and not event['allowed']:
                     key = prepareUsername(str(event['username'])) + event['ipAddress'] + str(event['allowed'])
                     if key in authN:
                         authN[key]['count'] += 1
